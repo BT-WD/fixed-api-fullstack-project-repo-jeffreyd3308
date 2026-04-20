@@ -1,1 +1,51 @@
+body {
+  margin: 0;
+  padding: 0;
+  background-image: linear-gradient(to bottom, transparent 0%, transparent 80%, rgba(0,0,0,1) 100%), url('NewYorkCity.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+  background-position: center;
+  min-height: 100vh;
+}
 
+.title-container {
+  width: 80%;
+  min-height: 20vh;
+  margin: 2rem auto 0;
+  padding: 1.5rem;
+  border-top: 2px solid #000;
+  border-bottom: 2px solid #000;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.title-container h1 {
+  margin: 0;
+  color: black;
+  font-size: 6rem;
+  font-family: sans-serif;
+}
+
+.map-container {
+  width: 80%;
+  min-height: 60vh;
+  margin: 2rem auto 0;
+  padding: 1.5rem;
+  border-top: 2px solid #000;
+  border-bottom: 2px solid #000;
+  background: rgba(0, 0, 0, 0.5), url('subway_map.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.subwayMap {
+  max-width: 50%;
+  max-height: 50%;
+}
