@@ -77,6 +77,7 @@ body {
   border-radius: 0.85rem;
   color: white;
   box-sizing: border-box;
+  position: relative;
 }
 
 .line-icon {
@@ -96,6 +97,43 @@ body {
   cursor: pointer;
   white-space: nowrap;
   min-width: auto;
+  position: relative;
+}
+
+.dropdown-container {
+  width: 100%;
+  margin: -0.75rem 0 0.75rem 0;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #000;
+  border-radius: 0.5rem;
+  color: #000;
+  display: none;
+  z-index: 10;
+  max-height: 300px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.stop-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #ddd;
+  font-size: 0.9rem;
+}
+
+.stop-item:last-child {
+  border-bottom: none;
+}
+
+.stop-item .stop-name {
+  font-weight: 600;
+}
+
+.stop-item .arrival-time {
+  text-align: right;
+  color: #666;
 }
 
 .line-frame img,
