@@ -1,5 +1,79 @@
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings';
 
+// Favorite functionality
+let favorites = JSON.parse(localStorage.getItem('favoriteTrainLines')) || [];
+
+function saveFavorites() {
+    localStorage.setItem('favoriteTrainLines', JSON.stringify(favorites));
+}
+
+function updateFavoriteButtons() {
+    document.querySelectorAll('.favorite-button').forEach(button => {
+        const line = button.dataset.line;
+        if (favorites.includes(line)) {
+            button.textContent = '★';
+        } else {
+            button.textContent = '☆';
+        }
+    });
+}
+
+function renderFavorites() {
+    const favoritesList = document.getElementById('favorites-list');
+    favoritesList.innerHTML = '';
+    
+    favorites.forEach(line => {
+        const favoriteItem = document.createElement('div');
+        favoriteItem.className = 'favorite-item';
+        
+        const img = document.createElement('img');
+        img.src = `train_icon_img/${line}.png`;
+        img.alt = `Line ${line} icon`;
+        img.className = 'line-icon';
+        
+        const name = document.createElement('span');
+        name.className = 'line-name';
+        name.textContent = `Line ${line}`;
+        
+        const removeButton = document.createElement('button');
+        removeButton.className = 'remove-favorite';
+        removeButton.textContent = 'Remove';
+        removeButton.addEventListener('click', () => {
+            favorites = favorites.filter(fav => fav !== line);
+            saveFavorites();
+            updateFavoriteButtons();
+            renderFavorites();
+        });
+        
+        favoriteItem.appendChild(img);
+        favoriteItem.appendChild(name);
+        favoriteItem.appendChild(removeButton);
+        
+        favoritesList.appendChild(favoriteItem);
+    });
+}
+
+// Load stops data
+let stopsMap = {};
+
+async function loadStopsData() {
+    try {
+        const response = await fetch('stops.txt');
+        const text = await response.text();
+        const lines = text.split('\n');
+        lines.forEach(line => {
+            const parts = line.split(',');
+            if (parts.length >= 2) {
+                const stopId = parts[0];
+                const stopName = parts[1];
+                stopsMap[stopId] = stopName;
+            }
+        });
+    } catch (error) {
+        console.error('Error loading stops data:', error);
+    }
+}
+
 // Map train lines to their API endpoint names
 function getEndpointName(trainLine) {
     const line = trainLine.toUpperCase();
@@ -71,8 +145,10 @@ async function getFutureStops(trainLine) {
         filteredData.forEach(entity => {
             if (entity.tripUpdate) {
                 const stops = entity.tripUpdate.stopTimeUpdate.map(update => {
+                    const stopName = stopsMap[update.stopId] || update.stopId;
                     return {
                         stopId: update.stopId,
+                        stopName: stopName,
                         arrival: new Date(update.arrival?.time * 1000).toLocaleTimeString()
                     };
                 });
@@ -84,21 +160,9 @@ async function getFutureStops(trainLine) {
     return allStops;
 }
 
-// const data = await getTrainData('l'); // Get L train data
-
-// data.forEach(entity => {
-//   if (entity.tripUpdate) {
-//     const tripId = entity.tripUpdate.trip.tripId;
-//     const updates = entity.tripUpdate.stopTimeUpdate;
-
-//     updates.forEach(stop => {
-//       console.log(`Train ${tripId} arriving at ${stop.stopId} at ${new Date(stop.arrival.time * 1000)}`);
-//     });
-//   }
-// });
-
 // Dropdown functionality
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadStopsData();
     const buttons = document.querySelectorAll('.line-dropdown-button');
 
     buttons.forEach(button => {
@@ -133,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 frame.insertAdjacentElement('afterend', dropdown);
                 this.textContent = '✕ Close';
 
-                const trainLine = this.dataset.originalText.split(' ')[0];
+                const trainLine = this.dataset.line;
                 
                 const stops = await getFutureStops(trainLine);
                 
@@ -144,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const stopItem = document.createElement('div');
                         stopItem.className = 'stop-item';
                         stopItem.innerHTML = `
-                            <span class="stop-name">${stop.stopId}</span>
+                            <span class="stop-name">${stop.stopName}</span>
                             <span class="arrival-time">${stop.arrival}</span>
                         `;
                         dropdown.appendChild(stopItem);
@@ -161,4 +225,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Favorite buttons
+    document.querySelectorAll('.favorite-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const line = this.dataset.line;
+            if (favorites.includes(line)) {
+                favorites = favorites.filter(fav => fav !== line);
+            } else {
+                favorites.push(line);
+            }
+            saveFavorites();
+            updateFavoriteButtons();
+            renderFavorites();
+        });
+    });
+    
+    updateFavoriteButtons();
+    renderFavorites();
 });

@@ -100,6 +100,24 @@ body {
   position: relative;
 }
 
+.favorite-button {
+  padding: 0.55rem 0.8rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #111;
+  background: #f0f0f0;
+  border: 2px solid #000;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  min-width: auto;
+  position: relative;
+}
+
+.favorite-button:hover {
+  background: #e0e0e0;
+}
+
 .dropdown-container {
   width: 100%;
   margin: -0.75rem 0 0.75rem 0;
@@ -143,4 +161,60 @@ body {
 
 .line-dropdown-button:hover {
   background: #e0e0e0;
+}
+
+.favorites-panel {
+  width: 80%;
+  margin: 1.5rem auto 2rem;
+  padding: 1.5rem;
+  border-top: 2px solid #000;
+  border-bottom: 2px solid #000;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 0.75rem;
+  box-sizing: border-box;
+}
+
+.favorites-panel h2 {
+  color: white;
+  margin: 0 0 1rem 0;
+  font-size: 2rem;
+}
+
+#favorites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.favorite-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #000;
+  border-radius: 0.85rem;
+  color: white;
+  box-sizing: border-box;
+}
+
+.favorite-item .line-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.favorite-item .line-name {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.favorite-item .remove-favorite {
+  margin-left: auto;
+  padding: 0.3rem 0.6rem;
+  background: #f0f0f0;
+  border: 2px solid #000;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8rem;
 }
