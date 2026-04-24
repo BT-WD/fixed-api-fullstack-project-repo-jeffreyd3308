@@ -131,12 +131,10 @@ async function getFutureStops(trainLine) {
     if (data) {
         const expectedRouteId = getRouteId(trainLine);
         
-        // Filter by route ID to get only the requested train line
         const filteredData = data.filter(entity => {
             return entity.tripUpdate && entity.tripUpdate.trip.routeId === expectedRouteId;
         });
         
-        // Log for debugging
         if (filteredData.length === 0) {
             console.log(`No trips found for ${trainLine} (routeId: ${expectedRouteId}). Available routeIds:`, 
                 data.filter(e => e.tripUpdate).map(e => e.tripUpdate.trip.routeId).slice(0, 5));
