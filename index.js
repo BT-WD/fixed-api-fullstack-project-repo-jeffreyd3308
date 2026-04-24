@@ -1,5 +1,39 @@
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings';
 
+let staticOrder = {}; // stationId → stop_sequence
+
+async function loadStaticOrder(trainLine) {
+    staticOrder = {}; // reset
+
+    const response = await fetch('stop_times.txt');
+    const text = await response.text();
+    const lines = text.split('\n');
+
+    const routeId = getRouteId(trainLine); // e.g. "1", "GS", "SI"
+
+    for (const line of lines) {
+        const parts = line.split(',');
+        if (parts.length < 5) continue;
+
+        const tripId = parts[0];
+        const stopId = parts[1];
+        const stopSequence = parseInt(parts[4]);
+
+        // Match route by checking the end of tripId
+        if (!tripId.includes(`_${routeId}`)) continue;
+
+        // Only northbound
+        if (!stopId.endsWith('N')) continue;
+
+        const stationId = stopId.slice(0, -1);
+
+        // Only take the first occurrence (static order is same for all trips)
+        if (!staticOrder[stationId]) {
+            staticOrder[stationId] = stopSequence;
+        }
+    }
+}
+
 // Favorite functionality
 let favorites = JSON.parse(localStorage.getItem('favoriteTrainLines')) || [];
 
@@ -124,38 +158,179 @@ function getRouteId(trainLine) {
     return line;
 }
 
+// async function getFutureStops(trainLine) {
+//     const data = await getTrainData(trainLine);
+//     const allStops = [];
+    
+//     if (data) {
+//         const expectedRouteId = getRouteId(trainLine);
+        
+//         const filteredData = data.filter(entity => {
+//             return entity.tripUpdate && entity.tripUpdate.trip.routeId === expectedRouteId;
+//         });
+        
+//         if (filteredData.length === 0) {
+//             console.log(`No trips found for ${trainLine} (routeId: ${expectedRouteId}). Available routeIds:`, 
+//                 data.filter(e => e.tripUpdate).map(e => e.tripUpdate.trip.routeId).slice(0, 5));
+//         }
+        
+//         // filteredData.forEach(entity => {
+//         //     if (entity.tripUpdate) {
+//                 // const stops = entity.tripUpdate.stopTimeUpdate.map(update => {
+//                 //     const stopName = stopsMap[update.stopId] || update.stopId;
+//                 //     return {
+//                 //         stopId: update.stopId,
+//                 //         stopName: stopName,
+//                 //         arrival: new Date(update.arrival?.time * 1000).toLocaleTimeString()
+//                 //     };
+//                 // });
+//         //         const stops = entity.tripUpdate.stopTimeUpdate
+//         //         .slice() // copy so we don’t mutate original
+//         //         .sort((a, b) => a.stopSequence - b.stopSequence)
+//         //         .map(update => {
+//         //             const stopName = stopsMap[update.stopId] || update.stopId;
+//         //             return {
+//         //                 stopId: update.stopId,
+//         //                 stopName: stopName,
+//         //                 arrival: new Date(update.arrival?.time * 1000).toLocaleTimeString(),
+//         //                 stopSequence: update.stopSequence
+//         //             };
+//         //         });
+//         //         allStops.push(...stops);
+//         //     }
+//         // });
+//         const stationMap = {};
+
+//         filteredData.forEach(entity => {
+//             if (!entity.tripUpdate) return;
+
+//             entity.tripUpdate.stopTimeUpdate.forEach(update => {
+//                 const fullId = update.stopId;      // e.g. "101N"
+//                 const stationId = fullId.slice(0, -1); // "101"
+//                 const dir = fullId.slice(-1);      // "N" or "S"
+
+//                 const stopName = stopsMap[fullId] || stopsMap[stationId] || fullId;
+
+//                 if (!stationMap[stationId]) {
+//                     stationMap[stationId] = {
+//                         stopName,
+//                         stopSequence: update.stopSequence,
+//                         northbound: [],
+//                         southbound: []
+//                     };
+//                 }
+
+//                 const arrival = new Date(update.arrival?.time * 1000).toLocaleTimeString();
+
+//                 if (dir === 'N') stationMap[stationId].northbound.push(arrival);
+//                 if (dir === 'S') stationMap[stationId].southbound.push(arrival);
+//             });
+//         });
+
+//         // Convert map → array
+//         const orderedStations = Object.values(stationMap)
+//             .sort((a, b) => a.stopSequence - b.stopSequence);
+
+//         // Build final output
+//         const finalStops = [];
+
+//         orderedStations.forEach(st => {
+//             finalStops.push({
+//                 stopName: st.stopName + " (NB)",
+//                 arrival: st.northbound[0] || "—"
+//             });
+//             finalStops.push({
+//                 stopName: st.stopName + " (SB)",
+//                 arrival: st.southbound[0] || "—"
+//             });
+//         });
+
+//         allStops.push(...finalStops);
+//     }
+    
+//     return allStops;
+// }
 async function getFutureStops(trainLine) {
+    await loadStaticOrder(trainLine); // loads NB static order
+
     const data = await getTrainData(trainLine);
-    const allStops = [];
-    
-    if (data) {
-        const expectedRouteId = getRouteId(trainLine);
-        
-        const filteredData = data.filter(entity => {
-            return entity.tripUpdate && entity.tripUpdate.trip.routeId === expectedRouteId;
+    if (!data) return [];
+
+    const expectedRouteId = getRouteId(trainLine);
+
+    const filteredData = data.filter(entity =>
+        entity.tripUpdate &&
+        entity.tripUpdate.trip.routeId === expectedRouteId
+    );
+
+    const realtimeStops = [];
+
+    filteredData.forEach(entity => {
+        entity.tripUpdate.stopTimeUpdate.forEach(update => {
+            const stopId = update.stopId;
+            const stationId = stopId.slice(0, -1);
+
+            // Only sort using NB static order, but allow SB to appear
+            const staticOrderValue = staticOrder[stationId] || 9999;
+
+            const baseStationId = stopId.slice(0, -1); // remove N/S
+            const direction = stopId.slice(-1) === "N" ? "NB" : "SB";
+            const stopName = (stopsMap[baseStationId] || baseStationId) + ` (${direction})`;
+
+            realtimeStops.push({
+                stationId,
+                stopId,
+                stopName,
+                direction, // <-- THIS IS WHAT YOU WANTED
+                arrival: update.arrival?.time
+                    ? new Date(update.arrival.time * 1000).toLocaleTimeString()
+                    : "—",
+                staticOrder: staticOrderValue
+            });
         });
-        
-        if (filteredData.length === 0) {
-            console.log(`No trips found for ${trainLine} (routeId: ${expectedRouteId}). Available routeIds:`, 
-                data.filter(e => e.tripUpdate).map(e => e.tripUpdate.trip.routeId).slice(0, 5));
+    });
+
+    // Sort by static NB order
+    realtimeStops.sort((a, b) => a.staticOrder - b.staticOrder);
+
+    // Keep only the earliest arrival per station per direction
+    const earliestMap = {}; 
+    // structure: earliestMap[stationId] = { N: stopObj, S: stopObj }
+
+    realtimeStops.forEach(stop => {
+        if (!earliestMap[stop.stationId]) {
+            earliestMap[stop.stationId] = { N: null, S: null };
         }
-        
-        filteredData.forEach(entity => {
-            if (entity.tripUpdate) {
-                const stops = entity.tripUpdate.stopTimeUpdate.map(update => {
-                    const stopName = stopsMap[update.stopId] || update.stopId;
-                    return {
-                        stopId: update.stopId,
-                        stopName: stopName,
-                        arrival: new Date(update.arrival?.time * 1000).toLocaleTimeString()
-                    };
-                });
-                allStops.push(...stops);
+
+        const dir = stop.direction; // "NB" or "SB"
+        const key = dir === "NB" ? "N" : "S";
+
+        // Convert arrival to timestamp for comparison
+        const arrivalUnix = stop.arrival === "—"
+            ? Infinity
+            : new Date(`1970-01-01T${stop.arrival}`).getTime();
+
+        if (!earliestMap[stop.stationId][key]) {
+            earliestMap[stop.stationId][key] = { ...stop, arrivalUnix };
+        } else {
+            if (arrivalUnix < earliestMap[stop.stationId][key].arrivalUnix) {
+                earliestMap[stop.stationId][key] = { ...stop, arrivalUnix };
             }
-        });
-    }
-    
-    return allStops;
+        }
+    });
+
+    // Flatten back into an array
+    const filteredStops = [];
+
+    Object.values(earliestMap).forEach(st => {
+        if (st.N) filteredStops.push(st.N);
+        if (st.S) filteredStops.push(st.S);
+    });
+
+    // Sort using static order (NB order)
+    filteredStops.sort((a, b) => a.staticOrder - b.staticOrder);
+
+    return filteredStops;
 }
 
 // Dropdown functionality
